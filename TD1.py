@@ -29,3 +29,25 @@ def decoupage_donnes(X, Y):
     Xapp = np.take(X, nbr_app, 0)
     Yapp = np.take(Y, nbr_app, 0)
     return Xapp, Yapp, Xtest, Ytest
+
+def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
+    N = np.shape(Xapp)[0]
+    M = np.shape(Xtest)[0]
+    
+    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp)))
+    diag_xapp = np.reshape(diag_xapp, (N,1))
+    mat_ligne_m = np.ones((1,M))
+    terme1_somme = diag_xapp.dot(mat_ligne_m)
+    
+    diag_xtest = np.diag(Xtest.dot(np.transpose(Xtest)))
+    diag_xtest = np.reshape(diag_xtest, (1,M))
+    mat_colonne_n = np.ones((N,1))
+    terme2_somme = mat_colonne_n.dot(diag_xtest)
+    
+    terme3_somme = Xapp.dot(np.transpose(Xtest))
+    
+    dist = terme1_somme + terme2_somme - 2*terme3_somme
+    
+    return dist
+    
+    
