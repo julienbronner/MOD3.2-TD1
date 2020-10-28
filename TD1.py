@@ -46,8 +46,15 @@ def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
     
     terme3_somme = Xapp.dot(np.transpose(Xtest))
     
-    dist = terme1_somme + terme2_somme - 2*terme3_somme
-    
+    dist = terme1_somme + terme2_somme - 2*terme3_somme 
     return dist
     
+def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+    N,M = np.shape(dist)
+    sort_indices = np.argpartition(dist, K-1, axis = 0) #K-1 car on part de 0
+    Yapp_mat = Yapp.dot(np.ones(1,M)) # pour dupliquer Yapp dans toutes les colonnes
+    Yapp_mat_sort = np.take_along_axis(Yapp_mat, sort_indices, axis=0)
+    Yapp_mat_sort_tronque = Yapp_mat_sort[:K, : ]
+    #trouver comment avoir l'element le lus present de chaque colonne et après on aura Ypred
+    return ''
     
