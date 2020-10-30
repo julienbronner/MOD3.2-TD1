@@ -6,16 +6,14 @@ Created on Tue Oct 20 10:40:01 2020
 @author: raphael
 """
 
-## Imports
+#%% Imports
 import pickle
 import numpy as np
 from random import sample
 
 np.random.seed(1) # pour que l'exécution soit déterministe
 
-#######################
-# Code Julien Bronner #
-#######################
+#%% Code Julien Bronner
 
 def unpickle(file):
     with open(file, 'rb') as fo:
@@ -39,9 +37,36 @@ def decoupage_donnes(X, Y):
     Yapp = np.take(Y, nbr_app, 0)
     return Xapp, Yapp, Xtest, Ytest
 
-##########################
-# Chargement des données #
-##########################
+def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
+    N = np.shape(Xapp)[0]
+    M = np.shape(Xtest)[0]
+    
+    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp)))
+    diag_xapp = np.reshape(diag_xapp, (N,1))
+    mat_ligne_m = np.ones((1,M))
+    terme1_somme = diag_xapp.dot(mat_ligne_m)
+    
+    diag_xtest = np.diag(Xtest.dot(np.transpose(Xtest)))
+    diag_xtest = np.reshape(diag_xtest, (1,M))
+    mat_colonne_n = np.ones((N,1))
+    terme2_somme = mat_colonne_n.dot(diag_xtest)
+    
+    terme3_somme = Xapp.dot(np.transpose(Xtest))
+    
+    dist = terme1_somme + terme2_somme - 2*terme3_somme 
+    return dist
+    
+def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+    N,M = np.shape(dist)
+    sort_indices = np.argpartition(dist, K-1, axis = 0) #K-1 car on part de 0
+    Yapp_mat = Yapp.dot(np.ones(1,M)) # pour dupliquer Yapp dans toutes les colonnes
+    Yapp_mat_sort = np.take_along_axis(Yapp_mat, sort_indices, axis=0)
+    Yapp_mat_sort_tronque = Yapp_mat_sort[:K, : ]
+    #trouver comment avoir l'element le lus present de chaque colonne et après on aura Ypred
+    return ''
+
+#%% Chargement des données
+
 arbo_ia = "/home/raphael/Documents/Centrale Lyon/Apprentissage profond et IA/"
 data_X, label_Y = lecture_cifar(arbo_ia + "cifar-10-batches-py/data_batch_1")
 Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
@@ -52,9 +77,7 @@ Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
 # dict_batch_4 = unpickle(arbo_ia + "cifar-10-batches-py/data_batch_4")
 # dict_batch_5 = unpickle(arbo_ia + "cifar-10-batches-py/data_batch_5")
 
-########################
-## Réseau de neurones ##
-########################
+#%% Réseau de neurones
 
 def matrice_stochastique(Y):
     # On suppose que les valeurs sont entières entre 0 et 9
@@ -88,9 +111,7 @@ def evaluation_classifieur(Ytest, Ypred):
     accuracy = s/n
     return accuracy
 
-##########################
-# Génération des données #
-##########################
+#%% Génération des données
 
 # N est le nombre de données d'entrée
 # D_in est la dimension des données d'entrée
