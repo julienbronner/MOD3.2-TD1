@@ -80,6 +80,20 @@ Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
 #%% Réseau de neurones
 
 def matrice_stochastique(Y):
+    """
+    Parameters
+    ----------
+    Y : Array
+        Vecteur de taille (N,1) contenant les classes comprises entre 0 et 9.
+
+    Returns
+    -------
+    Y_stochastique : Array
+        Matrice de taille (N, 10). Chaque classe est codée sous la forme d'un
+        vecteur de taille 10, composé de 0 et d'un 1 à l'indice de la classe.
+        Par exemple, la classe 6 est codée par le vecteur [0., 0., 0., 0., 0., 0., 1., 0., 0., 0.].
+
+    """
     # On suppose que les valeurs sont entières entre 0 et 9
     n = len(Y)
     eye_10 = np.eye(10)
@@ -117,56 +131,67 @@ def evaluation_classifieur(Ytest, Ypred):
 # D_in est la dimension des données d'entrée
 # D_h le nombre de neurones de la couche cachée
 # D_out est la dimension de sortie (nombre de neurones de la couche de sortie)
-# N, D_in, D_h, D_out = 30, 2, 10, 3
-N, D_in = np.shape(Xapp)
-D_h, D_out = 30, 10
+def neural_network_classification_cifar_10(Xapp, Yapp, gradient_step=1e-4, nb_iterations = 100):
+    N, D_in = np.shape(Xapp)
+    D_h, D_out = 20, 10
+    
+    # Création d'une matrice d'entrée X et de sortie Y
+    X = Xapp/255 #Normalisation des données
+    Y = matrice_stochastique(Yapp)
+    
+    # Initialisation aléatoire des poids du réseau
+    W1 = 2*np.random.random((D_in, D_h)) - 1
+    b1 = np.zeros((1, D_h))
+    W2 = 2*np.random.random((D_h, D_out))-1
+    b2 = np.zeros((1, D_out))
+    
+    for i in range(nb_iterations):
+        ####################################################
+        # Passe avant : calcul de la sortie prédite Y_pred #
+        ####################################################
+        I1 = X.dot(W1) + b1 # Potentiel d'entrée de la couche cachée
+        O1 = 1/(1 + np.exp(-I1)) # Sortie de la couche cachée (fonction d'activation de type sigmoïde)
+        I2 = O1.dot(W2) + b2 # Potentiel d'entrée de la couche de sortie
+        O2 = 1/(1 + np.exp(-I2)) # Sortie de la couche de sortie (fonction d'activation de type sigmoïde)
+        O2 = O2/np.sum(O2, axis=1)[:,np.newaxis] # Normalisation des coefficients sur chaque ligne
+        Y_pred = O2 # Les valeurs prédites sont les sorties de la couche de sortie
+        
+        # if i == 0:
+        #     print("O2", O2)
+        ########################################################
+        # Calcul et affichage de la fonction perte de type MSE #
+        ########################################################
+        loss = np.square(Y_pred - Y).sum()/2
+        if i%int(nb_iterations/10) == 0 :
+            print(i, "loss :", loss)
+        
+        ########################################
+        # Passe arrière : mis à jour des poids #
+        ########################################
+        grad_Y_pred = 2*(Y_pred - Y)
+        grad_O2 = grad_Y_pred*(O2*(1 - O2))
+        grad_w2 = O1.T.dot(grad_O2)
+        
+        grad_O1 = O1*(1 - O1)
+        grad_w1 = X.T.dot((grad_O2.dot(W2.T))*grad_O1)
+        
+        W1 -= gradient_step*grad_w1
+        W2 -= gradient_step*grad_w2
+    return Y_pred, W1, W2
 
-# Création d'une matrice d'entrée X et de sortie Y avec des valeurs aléatoires
-# X = np.random.random((N, D_in))
-# Y = np.random.random((N, D_out))
-X = Xapp
+#%%
+liste_gradient_step = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
+liste_nb_iterations = [100, 200, 500, 1000]
+
 Y = matrice_stochastique(Yapp)
 
-# Initialisation aléatoire des poids du réseau
-W1 = 2*np.random.random((D_in, D_h)) - 1
-b1 = np.zeros((1, D_h))
-W2 = 2*np.random.random((D_h, D_out))-1
-b2 = np.zeros((1, D_out))
-
-for i in range(100):
-    ####################################################
-    # Passe avant : calcul de la sortie prédite Y_pred #
-    ####################################################
-    I1 = X.dot(W1) + b1 # Potentiel d'entrée de la couche cachée
-    O1 = 1/(1 + np.exp(-I1)) # Sortie de la couche cachée (fonction d'activation de type sigmoïde)
-    I2 = O1.dot(W2) + b2 # Potentiel d'entrée de la couche de sortie
-    O2 = 1/(1 + np.exp(-I2)) # Sortie de la couche de sortie (fonction d'activation de type sigmoïde)
-    Y_pred = O2 # Les valeurs prédites sont les sorties de la couche de sortie
-    
-    if i == 0:
-        print("O2", O2)
-    ########################################################
-    # Calcul et affichage de la fonction perte de type MSE #
-    ########################################################
-    loss = np.square(Y_pred - Y).sum()/2
-    if i%10 == 0 :
-        print(i, "loss : ", loss)
-    # print("loss : ", loss)
-    
-    ########################################
-    # Passe arrière : mis à jour des poids #
-    ########################################
-    grad_Y_pred = 2*(Y_pred - Y)
-    grad_O2 = grad_Y_pred*(O2*(1 - O2))
-    grad_w2 = O1.T.dot(grad_O2)
-    
-    grad_O1 = O1*(1 - O1)
-    grad_w1 = X.T.dot((grad_O2.dot(W2.T))*grad_O1)
-    
-    W1 -= 1e-4*grad_w1
-    W2 -= 1e-4*grad_w2
-
-print("Accuracy : ", evaluation_classifieur(Y, O2))
+for g_step in liste_gradient_step:
+    for nb_iter in liste_nb_iterations:
+        Y_pred, W1, W2 = neural_network_classification_cifar_10(Xapp, Yapp, gradient_step = g_step, nb_iterations = nb_iter)
+        accuracy = evaluation_classifieur(Y, Y_pred)
+        accuracy *= 100
+        print("Gradient step :", g_step, " and Nb iterations :", nb_iter)
+        print("Accuracy :", round(accuracy, 2), "%")
 
 
 
