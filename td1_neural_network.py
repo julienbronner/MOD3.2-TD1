@@ -131,7 +131,7 @@ def evaluation_classifieur(Ytest, Ypred):
 # D_in est la dimension des données d'entrée
 # D_h le nombre de neurones de la couche cachée
 # D_out est la dimension de sortie (nombre de neurones de la couche de sortie)
-def neural_network_classification_cifar_10(Xapp, Yapp, gradient_step=1e-4, nb_iterations = 100):
+def neural_network_classification_cifar_10(Xapp, Yapp, gradient_step=1e-3, nb_iterations = 1000):
     N, D_in = np.shape(Xapp)
     D_h, D_out = 20, 10
     
@@ -179,20 +179,75 @@ def neural_network_classification_cifar_10(Xapp, Yapp, gradient_step=1e-4, nb_it
         W2 -= gradient_step*grad_w2
     return Y_pred, W1, W2
 
-#%%
+def neural_network_classification_cifar_10_test(Xtest, Ytest, W1, W2, gradient_step=1e-3, nb_iterations = 1000):
+    N, D_in = np.shape(Xtest)
+    D_h, D_out = 20, 10
+    
+    # Création d'une matrice d'entrée X et de sortie Y
+    X = Xtest/255 #Normalisation des données
+    
+    # Initialisation des poids du réseau
+    b1 = np.zeros((1, D_h))
+    b2 = np.zeros((1, D_out))
+    
+    ####################################################
+    # Passe avant : calcul de la sortie prédite Y_pred #
+    ####################################################
+    I1 = X.dot(W1) + b1 # Potentiel d'entrée de la couche cachée
+    O1 = 1/(1 + np.exp(-I1)) # Sortie de la couche cachée (fonction d'activation de type sigmoïde)
+    I2 = O1.dot(W2) + b2 # Potentiel d'entrée de la couche de sortie
+    O2 = 1/(1 + np.exp(-I2)) # Sortie de la couche de sortie (fonction d'activation de type sigmoïde)
+    O2 = O2/np.sum(O2, axis=1)[:,np.newaxis] # Normalisation des coefficients sur chaque ligne
+    Y_pred = O2 # Les valeurs prédites sont les sorties de la couche de sortie
+    
+    return Y_pred
+
+#%% Recherche du meilleur gradient_step et nombre d'itérations
 liste_gradient_step = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 liste_nb_iterations = [100, 200, 500, 1000]
+nb_gradient_steps = len(liste_gradient_step)
+nb_liste_nb_iterations = len(liste_nb_iterations)
+accuracy_matrix = np.zeros((nb_gradient_steps, nb_liste_nb_iterations), dtype=float)
 
 Y = matrice_stochastique(Yapp)
 
-for g_step in liste_gradient_step:
-    for nb_iter in liste_nb_iterations:
+for i, g_step in enumerate(liste_gradient_step):
+    for j, nb_iter in enumerate(liste_nb_iterations):
         Y_pred, W1, W2 = neural_network_classification_cifar_10(Xapp, Yapp, gradient_step = g_step, nb_iterations = nb_iter)
         accuracy = evaluation_classifieur(Y, Y_pred)
         accuracy *= 100
-        print("Gradient step :", g_step, " and Nb iterations :", nb_iter)
+        accuracy_matrix[i,j] = accuracy
+        print("Gradient step :", g_step, "and Nb iterations :", nb_iter)
         print("Accuracy :", round(accuracy, 2), "%")
 
+# accuracy_matrix
+# array([[10.4875, 10.025 , 10.025 , 10.025 ],
+#        [10.4875, 10.05  ,  9.625 , 10.025 ],
+#        [10.025 , 10.4875, 10.1625,  9.9   ],
+#        [22.05  , 21.375 , 20.4   , 27.875 ],
+#        [22.725 , 22.2875, 18.825 , 20.7125],
+#        [16.3625, 20.7   , 22.35  , 24.425 ],
+#        [16.7875, 18.1   , 18.7375, 21.55  ],
+#        [11.45  , 13.425 , 16.05  , 18.425 ]])
+
+#%% 
+
+gradient_step = 1e-3
+nb_iterations = 100
+
+Yapp_stochastique = matrice_stochastique(Yapp)
+Y_pred, W1, W2 = neural_network_classification_cifar_10(Xapp, Yapp, gradient_step=gradient_step, nb_iterations=nb_iterations)
+accuracy = evaluation_classifieur(Yapp_stochastique, Y_pred)
+accuracy *= 100
+print("Gradient step :", gradient_step, "and Nb iterations :", nb_iterations)
+print("Accuracy :", round(accuracy, 2), "%")
+
+Ytest_stochastique = matrice_stochastique(Ytest)
+Ypred_test = neural_network_classification_cifar_10_test(Xtest, Ytest, W1, W2, gradient_step=gradient_step, nb_iterations=nb_iterations)
+accuracy_test = evaluation_classifieur(Ytest_stochastique, Ypred_test)
+accuracy_test *= 100
+print("Gradient step :", gradient_step, "and Nb iterations :", nb_iterations)
+print("Accuracy test data:", round(accuracy_test, 2), "%")
 
 
 
