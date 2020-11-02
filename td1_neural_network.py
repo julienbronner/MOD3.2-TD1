@@ -190,7 +190,7 @@ def neural_network_donnees_aleatoires():
         ########################################
         # Passe arrière : mis à jour des poids #
         ########################################
-        grad_Y_pred = 2*(Y_pred - Y)
+        grad_Y_pred = Y_pred - Y
         grad_O2 = grad_Y_pred*d_sigmoid(O2)
         grad_w2 = O1.T.dot(grad_O2)
         
@@ -283,7 +283,7 @@ def neural_network_classification_cifar_10_train(Xapp,
         ########################################
         # Passe arrière : mis à jour des poids #
         ########################################
-        grad_Y_pred = 2*(Y_pred - Y)
+        grad_Y_pred = Y_pred - Y
         grad_O2 = grad_Y_pred*d_sigmoid(O2)
         grad_w2 = O1.T.dot(grad_O2)
         
