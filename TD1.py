@@ -55,6 +55,6 @@ def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne 
     Yapp_mat = Yapp.dot(np.ones(1,M)) # pour dupliquer Yapp dans toutes les colonnes
     Yapp_mat_sort = np.take_along_axis(Yapp_mat, sort_indices, axis=0)
     Yapp_mat_sort_tronque = Yapp_mat_sort[:K, : ]
-    #trouver comment avoir l'element le lus present de chaque colonne et après on aura Ypred
+    #trouver comment avoir l'element le plus present de chaque colonne et après on aura Ypred
     return ''
     
