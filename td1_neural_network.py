@@ -135,7 +135,93 @@ def sigmoid(X, W):
     return O
 
 def d_sigmoid(X):
-    return X*(1 - X)  
+    return X*(1 - X)
+
+def neural_network_donnees_aleatoires():
+    np.random.seed(seed)
+    
+    # N est le nombre de données d'entrée
+    # D_in est la dimension des données d'entrée
+    # D_h le nombre de neurones de la couche cachée
+    # D_out est la dimension de sortie (nombre de neurones de la couche de sortie)
+    N, D_in, D_h, D_out = 30, 2, 10, 3
+    
+    nb_iterations = 100000
+    gradient_step = 1e-3
+    
+    # Création d'une matrice d'entrée X et de sortie Y avec des valeurs aléatoires
+    X = np.random.random((N,D_in))
+    Y = np.random.random((N,D_out))
+    
+    # Vecteurs pour mesurer la performance du modèle
+    vect_loss = np.zeros(nb_iterations)
+    vect_accuracy = np.zeros(nb_iterations)
+    
+    # Initialisation aléatoire des poids du réseau
+    W1 = 2*np.random.random((D_in, D_h)) - 1
+    W1 = np.array(W1, dtype="float32")
+    b1 = np.zeros((1, D_h), dtype="float32")
+    W2 = 2*np.random.random((D_h, D_out))-1
+    W2 = np.array(W2, dtype="float32")
+    b2 = np.zeros((1, D_out), dtype="float32")
+    
+    for i in range(nb_iterations):
+        ####################################################
+        # Passe avant : calcul de la sortie prédite Y_pred #
+        ####################################################
+        I1 = X.dot(W1) + b1 # Potentiel d'entrée de la couche cachée
+        O1 = 1/(1+np.exp(-I1)) # Sortie de la couche cachée (fonction d'activation de type sigmoïde)
+        I2 = O1.dot(W2) + b2 # Potentiel d'entrée de la couche de sortie
+        O2 = 1/(1+np.exp(-I2)) # Sortie de la couche de sortie (fonction d'activation de type sigmoïde)
+        Y_pred = O2 # Les valeurs prédites sont les sorties de la couche de sortie
+            
+        ########################################################
+        # Calcul et affichage de la fonction perte de type MSE #
+        ########################################################
+        loss = np.square(Y_pred - Y).sum()/2
+        vect_loss[i] = loss
+        
+        ######################################################
+        # Calcul et affichage de la précision du classifieur #
+        ######################################################
+        accuracy = evaluation_classifieur(Y, Y_pred)
+        vect_accuracy[i] = accuracy
+        
+        ########################################
+        # Passe arrière : mis à jour des poids #
+        ########################################
+        grad_Y_pred = Y_pred - Y
+        grad_O2 = grad_Y_pred*d_sigmoid(O2)
+        grad_w2 = O1.T.dot(grad_O2)
+        
+        grad_O1 = d_sigmoid(O1)
+        grad_w1 = X.T.dot((grad_O2.dot(W2.T))*grad_O1)
+        
+        W1 -= gradient_step*grad_w1
+        W2 -= gradient_step*grad_w2
+    
+    vect_accuracy*= 100
+    
+    #######################################
+    # Afficher les performances du modèle #
+    #######################################
+    
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    fig.suptitle("Fonction de perte en fonction des itérations")
+    ax1.set_xlabel(r'Itération $i$')
+    ax1.set_ylabel("Perte")
+    ax1.grid()
+    ax1.plot(vect_loss)
+    
+    ax2 = fig.add_subplot(212)
+    fig.suptitle("Précision en fonction des itérations")
+    ax2.set_xlabel(r'Itération $i$')
+    ax2.set_ylabel("Précision")
+    ax2.grid()
+    ax2.plot(vect_accuracy)
+    
+    return Y_pred, W1, W2, vect_loss, vect_accuracy
 
 def neural_network_classification_cifar_10_train(Xapp,
                                                  Yapp,
@@ -152,6 +238,7 @@ def neural_network_classification_cifar_10_train(Xapp,
     D_h, D_out = 20, 10
     
     # Création d'une matrice d'entrée X et de sortie Y
+    
     X = np.array(Xapp/255, dtype="float32") #Normalisation des données
     Y = matrice_stochastique(Yapp)
     
@@ -196,7 +283,7 @@ def neural_network_classification_cifar_10_train(Xapp,
         ########################################
         # Passe arrière : mis à jour des poids #
         ########################################
-        grad_Y_pred = 2*(Y_pred - Y)
+        grad_Y_pred = Y_pred - Y
         grad_O2 = grad_Y_pred*d_sigmoid(O2)
         grad_w2 = O1.T.dot(grad_O2)
         
@@ -207,7 +294,6 @@ def neural_network_classification_cifar_10_train(Xapp,
         W2 -= gradient_step*grad_w2
     
     vect_accuracy*= 100
-    
     return Y_pred, W1, W2, vect_loss, vect_accuracy
 
 def neural_network_classification_cifar_10_test(Xtest, 
