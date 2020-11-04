@@ -7,6 +7,7 @@ Created on Tue Oct 20 10:26:18 2020
 import pickle
 import numpy as np
 from scipy import stats
+import matplotlib.pyplot as plt
 
 seed = 2
 np.random.seed(seed) # pour que l'exécution soit déterministe
@@ -59,16 +60,17 @@ def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
 def kppv_distances_bala(Xtest, Xapp):
     a_2 = (Xtest**2).sum(axis=1)
     a_2 = a_2.reshape((-1,1))
-
+    print(a_2)
     b_2 = (Xapp**2).sum(axis=1)
     b_2 = b_2.reshape((1,-1))
-    
+    print(b_2)
     dist = -2 * Xtest.dot(Xapp.T) + a_2 + b_2
-
+    print(Xtest.dot(Xapp.T))
     return dist
 
 def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
     N,M = np.shape(dist)
+    #print(N,M)
     sort_indices = np.argpartition(dist, K-1, axis = 0) #K-1 car on part de 0
     Yapp = np.reshape(Yapp, (N,1))
     Yapp_mat = Yapp.dot(np.ones((1,M))) # pour dupliquer Yapp dans toutes les colonnes
@@ -81,15 +83,48 @@ def evaluation_classifieur(Ytest, Ypred):
     Ybool = (Ytest == Ypred)
     nbr_true = sum(Ybool)
     nbr_tot = len(Ybool)
-    return nbr_true/nbr_tot
+    return nbr_true/nbr_tot*100
 
 #%% Test
 
 K = 1000
 path = 'D:/julbr/Documents/ecole/ECL/3A\MOD 3.2 Deep Learning & IA/TD1/cifar-10-batches-py/data_batch_1'
-data_X, label_Y = lecture_cifar(path)
-Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
-dist = kppv_distances(Xtest, Xapp)
-Ypred = kppv_predict(dist, Yapp, K)
-accuracy = evaluation_classifieur(Ytest, Ypred)
-print(accuracy)
+def fonction_test(K, path):
+    data_X, label_Y = lecture_cifar(path)
+    Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
+    #print(np.shape(Xapp))
+    dist = kppv_distances(Xtest, Xapp)
+    Ypred = kppv_predict(dist, Yapp, K)
+    accuracy = evaluation_classifieur(Ytest, Ypred)
+    return(accuracy)
+
+#%% Expérimentations
+    
+def influence_K(Kmax, path):
+    data_X, label_Y = lecture_cifar(path)
+    Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
+    dist = kppv_distances(Xtest, Xapp)
+    K_liste = []
+    accuracy_liste = []
+    for K in range(1,Kmax, int(Kmax/100)):
+        K_liste.append(K)
+        Ypred = kppv_predict(dist, Yapp, K)
+        accuracy_liste.append(evaluation_classifieur(Ytest, Ypred))
+        
+#    fig = plt.figure()
+#    fig.title("Précisions en fonction du nombre de voisins")
+#    fig.set_xlabel("Nombre de voisins")
+#    fig.set_ylabel("Précision")
+#    fig.plot(K_liste, accuracy_liste)
+    plt.plot(K_liste, accuracy_liste)
+    plt.title("Précisions en fonction du nombre de voisins")
+    plt.xlabel("Nombre de voisins")
+    plt.ylabel("Précision (%)")
+    plt.show()
+    
+    
+influence_K(K, path)
+
+    
+        
+        
