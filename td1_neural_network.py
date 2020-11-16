@@ -10,31 +10,31 @@ Created on Tue Oct 20 10:40:01 2020
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 import copy
 import time
 
 seed = 2
 np.random.seed(seed) # pour que l'exécution soit déterministe
+fraction_test = 1/5 # choix de la part des images qui sert au test
 
-#%% Code Julien Bronner
-
-def unpickle(file):
+#%% Fonctions KPPV
+def unpickle(file): # permet l'ouverture des fichiers de batch
     with open(file, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
-def lecture_cifar(path):
+def lecture_cifar(path): # donne les images et les labels associés
     dico_tot = unpickle(path)
     data_X = np.array(dico_tot[b'data'])
     data_X = data_X.astype(float)
     label_Y = np.array(dico_tot[b'labels'])
     return data_X, label_Y
 
-def decoupage_donnes(X, Y):
+def decoupage_donnes(X, Y): # sépare l'ensemble de données entre celles d'apprentissages et de test
     np.random.seed(seed)
-    
     n = len(X)
-    nbr_aleatoires_test = np.random.choice(n, int(n/5), replace=False)
+    nbr_aleatoires_test = np.random.choice(n, int(n*fraction_test), replace=False)
     # nbr_aleatoires_test = sample(range(0,n), int(n/5))
     nbr_app = list(set(range(0,n)) - set(nbr_aleatoires_test))
     Xtest = np.take(X, nbr_aleatoires_test, 0)
@@ -43,33 +43,95 @@ def decoupage_donnes(X, Y):
     Yapp = np.take(Y, nbr_app, 0)
     return Xapp, Yapp, Xtest, Ytest
 
-def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
+def kppv_distances(Xtest, Xapp): # Calcul des distances
     N = np.shape(Xapp)[0]
     M = np.shape(Xtest)[0]
     
-    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp)))
+    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp))) # permet d'avoir pour chaque ligne, la somme de ses éléments au carré
     diag_xapp = np.reshape(diag_xapp, (N,1))
-    mat_ligne_m = np.ones((1,M))
-    terme1_somme = diag_xapp.dot(mat_ligne_m)
+    mat_ligne_m = np.ones((1,M)) # on veut ces éléments pour toutes les colonnes
+    terme1_somme = diag_xapp.dot(mat_ligne_m) # premier terme de la somme
     
     diag_xtest = np.diag(Xtest.dot(np.transpose(Xtest)))
     diag_xtest = np.reshape(diag_xtest, (1,M))
     mat_colonne_n = np.ones((N,1))
-    terme2_somme = mat_colonne_n.dot(diag_xtest)
+    terme2_somme = mat_colonne_n.dot(diag_xtest) # deuxieme terme de la somme
     
-    terme3_somme = Xapp.dot(np.transpose(Xtest))
+    terme3_somme = Xapp.dot(np.transpose(Xtest)) # troisieme terme de la somme
     
     dist = terme1_somme + terme2_somme - 2*terme3_somme 
     return dist
+
+def kppv_predict(dist, Yapp, K): 
+    """
+    Calcul des prédictions à partir de la matrice de distance
     
-def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+    Utilisation de np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+    """
     N,M = np.shape(dist)
+    #print(N,M) 
     sort_indices = np.argpartition(dist, K-1, axis = 0) #K-1 car on part de 0
-    Yapp_mat = Yapp.dot(np.ones(1,M)) # pour dupliquer Yapp dans toutes les colonnes
+    Yapp = np.reshape(Yapp, (N,1))
+    Yapp_mat = Yapp.dot(np.ones((1,M))) # pour dupliquer Yapp dans toutes les colonnes
     Yapp_mat_sort = np.take_along_axis(Yapp_mat, sort_indices, axis=0)
     Yapp_mat_sort_tronque = Yapp_mat_sort[:K, : ]
-    #trouver comment avoir l'element le lus present de chaque colonne et après on aura Ypred
-    return ''
+    Ypred = stats.mode(Yapp_mat_sort_tronque)[0][0] #permet d'avoir l'element le plus présent
+    return Ypred
+
+def evaluation_classifieur(Ytest, Ypred): # permet de connaitre la précision du classifieur
+    Ybool = (Ytest == Ypred)
+    nbr_true = sum(Ybool)
+    nbr_tot = len(Ybool)
+    return nbr_true/nbr_tot*100
+
+#%% Test KPPV
+
+K = 10 
+Kmax = 1000
+path = '/home/raphael/Documents/Centrale Lyon/Apprentissage profond et IA/cifar-10-batches-py/data_batch_1'
+def fonction_test(K, path):
+    """
+    Pour tester les fonctions et voir la précision du modèle
+    """
+    data_X, label_Y = lecture_cifar(path)
+    Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
+    #print(np.shape(Xapp))
+    dist = kppv_distances(Xtest, Xapp)
+    Ypred = kppv_predict(dist, Yapp, K)
+    accuracy = evaluation_classifieur(Ytest, Ypred)
+    return(accuracy)
+
+#%% Expérimentations KPPV
+    
+def influence_K(Kmax, path):
+    """
+    Pour afficher l'influence du nombre de voisin sur la précision
+    """
+    data_X, label_Y = lecture_cifar(path)
+    Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
+    dist = kppv_distances(Xtest, Xapp)
+    K_liste = []
+    accuracy_liste = []
+    for K in range(1,Kmax, int(Kmax/100)):
+        K_liste.append(K)
+        Ypred = kppv_predict(dist, Yapp, K)
+        accuracy_liste.append(evaluation_classifieur(Ytest, Ypred))
+        
+#    fig = plt.figure()
+#    fig.title("Précisions en fonction du nombre de voisins")
+#    fig.set_xlabel("Nombre de voisins")
+#    fig.set_ylabel("Précision")
+#    fig.plot(K_liste, accuracy_liste)
+    plt.plot(K_liste, accuracy_liste)
+    plt.title("Précisions en fonction du nombre de voisins")
+    plt.xlabel("Nombre de voisins")
+    plt.ylabel("Précision (%)")
+    plt.show()
+    
+    
+#print(fonction_test(K, path))
+#influence_K(Kmax, path)
+
 
 #%% Chargement des données
 arbo_ia = "/home/raphael/Documents/Centrale Lyon/Apprentissage profond et IA/"
@@ -82,7 +144,7 @@ Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
 # dict_batch_4 = unpickle(arbo_ia + "cifar-10-batches-py/data_batch_4")
 # dict_batch_5 = unpickle(arbo_ia + "cifar-10-batches-py/data_batch_5")
 
-#%% Réseau de neurones
+#%% Fonctions réseau de neurones
 
 def matrice_stochastique(Y):
     """
@@ -404,7 +466,7 @@ def neural_network_classification_cifar_10_test(Xtest,
     
     return Y_pred
 
-#%% Recherche du meilleur gradient_step et nombre d'itérations
+#%% Recherche du meilleur gradient_step pour le réseau de neurones
 
 ##################################################
 # ATTENTION : Met plusieurs minutes à s'exécuter #
@@ -438,6 +500,11 @@ for i, g_step in enumerate(liste_gradient_step):
     print("Accuracy test data:", round(accuracy_test, 2), "%")
 
 #array([ 9.675, 10.475, 10.275, 18.2, 21.4875, 25.85, 21.9875, 17.6125])
+
+# best_train_accuracy_matrix_gs
+# array([10.9, 11. , 11. , 29.6375, 25.9125, 25.9125, 21.9875, 17.65])
+# test_accuracy_matrix_gs
+# array([9.45, 9.45, 9.45, 27.05, 24.2, 22.95, 22.05, 16.6])
 
 #%% Recherche du meilleur nombre de neurones pour la couche cachée
 liste_dh = [10, 15, 20, 40, 60, 80, 100]
@@ -491,6 +558,8 @@ print("Accuracy test data:", round(accuracy_test, 2), "%")
 # Gradient step : 0.001 and Nb iterations : 1000
 # Maximum accuracy : 29.2 % reached at iteration  648
 # Accuracy test data: 20.0 %
+
+#loss = -(np.multiply(np.log(Y_pred), Y) + np.multiply((1 - Y), np.log(1 - Y_pred))).mean() 
 
 
 
