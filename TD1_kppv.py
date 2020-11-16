@@ -8,8 +8,6 @@ import pickle
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
-import skimage
-import PIL.Image
 
 seed = 2
 np.random.seed(seed) # pour que l'exécution soit déterministe
@@ -129,23 +127,9 @@ def influence_K(Kmax, path):
 #print(fonction_test(K, path))
 #influence_K(Kmax, path)
 
-#%% Affichage des images
+#%% Affichage de 25 images aléatoires
     
-X, Y = lecture_cifar(path)
-#test = X[0]
-#X_r = test[:32*32].reshape((32, 32))
-#X_g = test[32*32:2*32*32].reshape((32, 32))
-#X_b = test[2*32*32:].reshape((32, 32))
-#X_tot = np.array([X_r, X_g, X_b])
-#X_tot = np.transpose(X_tot, [1,2,0])
-#print(np.shape(X_tot))
-
-#image = PIL.Image.fromarray(X_tot, "RGB")
-#plt.imshow(image)
-
-
-
-#Visualizing CIFAR 10 --> fonctionne
+#X, Y = lecture_cifar(path)
 #X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("uint8")
 #fig, axes1 = plt.subplots(5,5,figsize=(3,3))
 #for j in range(5):
