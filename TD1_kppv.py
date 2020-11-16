@@ -8,6 +8,8 @@ import pickle
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
+import skimage
+import PIL.Image
 
 seed = 2
 np.random.seed(seed) # pour que l'exécution soit déterministe
@@ -87,7 +89,8 @@ def evaluation_classifieur(Ytest, Ypred):
 
 #%% Test
 
-K = 1000
+K = 10
+Kmax = 1000
 path = 'D:/julbr/Documents/ecole/ECL/3A\MOD 3.2 Deep Learning & IA/TD1/cifar-10-batches-py/data_batch_1'
 def fonction_test(K, path):
     data_X, label_Y = lecture_cifar(path)
@@ -122,9 +125,32 @@ def influence_K(Kmax, path):
     plt.ylabel("Précision (%)")
     plt.show()
     
-    
-influence_K(K, path)
+#print(fonction_test(K, path))
+#influence_K(Kmax, path)
 
+#%% Affichage
     
-        
-        
+X, Y = lecture_cifar(path)
+test = X[0]
+X_r = test[:32*32].reshape((32, 32))
+X_g = test[32*32:2*32*32].reshape((32, 32))
+X_b = test[2*32*32:].reshape((32, 32))
+X_tot = np.array([X_r, X_g, X_b])
+X_tot = np.transpose(X_tot, [1,2,0])
+#print(np.shape(X_tot))
+
+image = PIL.Image.fromarray(X_tot, "RGB")
+plt.imshow(image)
+
+
+
+#Visualizing CIFAR 10 --> fonctionne
+#X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("uint8")
+#fig, axes1 = plt.subplots(5,5,figsize=(3,3))
+#for j in range(5):
+#    for k in range(5):
+#        i = np.random.choice(range(len(X)))
+#        axes1[j][k].set_axis_off()
+##        axes1[j][k].imshow(X[i:i+1][0])  
+#        axes1[j][k].imshow(X[i])  
+
