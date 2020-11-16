@@ -264,7 +264,8 @@ def neural_network_classification_cifar_10_train(Xapp,
                                                  Yapp,
                                                  gradient_step = 1e-3,
                                                  nb_iterations = 1000,
-                                                 mini_batch_size = 100):
+                                                 mini_batch_size = 100,
+                                                 D_h = 20):
     
     np.random.seed(seed)
     t0= time.time()
@@ -274,7 +275,7 @@ def neural_network_classification_cifar_10_train(Xapp,
     # D_h le nombre de neurones de la couche cachée
     # D_out est la dimension de sortie (nombre de neurones de la couche de sortie)
     N, D_in = np.shape(Xapp)
-    D_h, D_out = 20, 10
+    D_out = 10
     
     # Création d'une matrice d'entrée X et de sortie Y
     
@@ -330,6 +331,8 @@ def neural_network_classification_cifar_10_train(Xapp,
         ######################################################
         accuracy = evaluation_classifieur(Y, Y_pred)
         vect_accuracy[i] = accuracy
+        # Pour ne pas avoir à mettre à jour l'array des "meilleurs poids",
+        # on ne l'enregistre que si la précision a augmenté de 5%.
         if accuracy > 1.05*best_accuracy:
             best_accuracy = accuracy
             best_param = copy.deepcopy([W1, W2, b1, b2])
@@ -346,7 +349,14 @@ def neural_network_classification_cifar_10_train(Xapp,
     #######################################
     
     fig = plt.figure()
-    fig.suptitle("Learning rate : " + str(gradient_step) + " & Nb_iterations : " + str(nb_iterations))
+    suptitle = ""
+    suptitle += "Learning rate : " + str(gradient_step) if gradient_step != 1e-3 else ""
+    suptitle += "" if len(suptitle) == 0 else " & "
+    suptitle += "Nb_iterations : " + str(nb_iterations) if nb_iterations != 1000 else ""
+    suptitle += "" if len(suptitle) == 0 else " & "
+    suptitle += "Nb neurones couche cachée : " + str(D_h) if D_h != 20 else ""
+    fig.suptitle(suptitle)
+    
     ax1 = fig.add_subplot(211)
     ax1.set_title("Fonction de perte en fonction des itérations")
     ax1.set_xlabel(r'Itération $i$')
@@ -377,7 +387,7 @@ def neural_network_classification_cifar_10_test(Xtest,
                                                 gradient_step = 1e-3, 
                                                 nb_iterations = 1000):
     N, D_in = np.shape(Xtest)
-    D_h, D_out = 20, 10
+    _, D_h = np.shape(W1)
     
     # Création d'une matrice d'entrée X et de sortie Y
     X = np.array(Xtest/255, dtype="float32")  #Normalisation des données
@@ -400,21 +410,64 @@ def neural_network_classification_cifar_10_test(Xtest,
 # ATTENTION : Met plusieurs minutes à s'exécuter #
 ##################################################
 
-liste_gradient_step = [1e-2, 5e-2, 1e-3, 5e-3, 1e-4, 5e-4, 1e-5, 5e-5]
+liste_gradient_step = [5e-2, 1e-2, 5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 nb_gradient_steps = len(liste_gradient_step)
-accuracy_matrix = np.zeros(nb_gradient_steps, dtype=float)
+# accuracy_matrix = np.zeros(nb_gradient_steps, dtype=float)
+best_train_accuracy_matrix_gs = np.zeros(nb_gradient_steps, dtype=float)
+test_accuracy_matrix_gs = np.zeros(nb_gradient_steps, dtype=float)
 
-Y = matrice_stochastique(Yapp)
+# Y = matrice_stochastique(Yapp)
+Y_train_stochastique = matrice_stochastique(Yapp)
+Y_test_stochastique = matrice_stochastique(Ytest)
 
 for i, g_step in enumerate(liste_gradient_step):
+    # Entraînement du réseau
     Y_pred, best_param, vect_loss, vect_accuracy = neural_network_classification_cifar_10_train(Xapp, Yapp, gradient_step = g_step)
-    accuracy = evaluation_classifieur(Y, Y_pred)
-    accuracy *= 100
-    accuracy_matrix[i] = accuracy
+    
+    # Comparaison sur les données de validation
+    best_W1, best_W2, best_b1, best_b2 = best_param
+    Y_pred_test = neural_network_classification_cifar_10_test(Xtest, Ytest, best_W1, best_W2, best_b1, best_b2)
+    
+    accuracy_test = evaluation_classifieur(Y_test_stochastique, Y_pred_test)
+    accuracy_test *= 100
     print("Gradient step :", g_step)
-    print("Accuracy :", round(accuracy, 2), "%\n")
+    best_train_accuracy = np.amax(vect_accuracy)
+    best_train_accuracy_matrix_gs[i] = best_train_accuracy
+    print("Maximum accuracy :", round(best_train_accuracy, 2), "% reached at iteration ", np.where(vect_accuracy == np.amax(vect_accuracy))[0][0])
+    test_accuracy_matrix_gs[i] = accuracy_test
+    print("Accuracy test data:", round(accuracy_test, 2), "%")
 
-#array([10.275, 10.05 , 10.275, 10.475, 21.65 , 20.125, 23. ,21.45 , 16.725])
+#array([ 9.675, 10.475, 10.275, 18.2, 21.4875, 25.85, 21.9875, 17.6125])
+
+#%% Recherche du meilleur nombre de neurones pour la couche cachée
+liste_dh = [10, 15, 20, 40, 60, 80, 100]
+nb_dh = len(liste_dh)
+best_train_accuracy_matrix_dh = np.zeros(nb_dh, dtype=float)
+test_accuracy_matrix_dh = np.zeros(nb_dh, dtype=float)
+
+Y_train_stochastique = matrice_stochastique(Yapp)
+Y_test_stochastique = matrice_stochastique(Ytest)
+
+for i, d_h in enumerate(liste_dh):
+    # Entraînement du réseau
+    Y_pred, best_param, vect_loss, vect_accuracy = neural_network_classification_cifar_10_train(Xapp, Yapp, D_h=d_h)
+    
+    # Comparaison sur les données de validation
+    best_W1, best_W2, best_b1, best_b2 = best_param
+    Y_pred_test = neural_network_classification_cifar_10_test(Xtest, Ytest, best_W1, best_W2, best_b1, best_b2)
+    accuracy_test = evaluation_classifieur(Y_test_stochastique, Y_pred_test)
+    accuracy_test *= 100
+    print("Nombre de neurones dans la couche cachée :", d_h)
+    best_train_accuracy = np.amax(vect_accuracy)
+    best_train_accuracy_matrix_dh[i] = best_train_accuracy
+    print("Maximum accuracy :", round(best_train_accuracy, 2), "% reached at iteration ", np.where(vect_accuracy == np.amax(vect_accuracy))[0][0])
+    test_accuracy_matrix_dh[i] = accuracy_test
+    print("Accuracy test data:", round(accuracy_test, 2), "%")
+    
+# best_train_accuracy_matrix_dh
+# array([22.1   , 24.6375, 29.6375, 30.55  , 23.2625, 14.35  , 12.1375])
+# test_accuracy_matrix_dh
+# array([21.  , 22.25, 27.05, 27.65, 21.4 , 13.4 , 10.8 ])
 
 #%% Entraînement du réseau et comparaison sur les données de validation
 # Temps d'exécution : 3 minutes
