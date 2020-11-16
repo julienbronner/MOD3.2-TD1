@@ -13,22 +13,22 @@ import PIL.Image
 
 seed = 2
 np.random.seed(seed) # pour que l'exécution soit déterministe
-fraction_test = 1/5
+fraction_test = 1/5 # choix de la part des images qui sert au test
 
 #%% Fonctions
-def unpickle(file):
+def unpickle(file): # permet l'ouverture des fichiers de batch
     with open(file, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
-def lecture_cifar(path):
+def lecture_cifar(path): # donne les images et les labels associés
     dico_tot = unpickle(path)
     data_X = np.array(dico_tot[b'data'])
     data_X = data_X.astype(float)
     label_Y = np.array(dico_tot[b'labels'])
     return data_X, label_Y
 
-def decoupage_donnes(X, Y):
+def decoupage_donnes(X, Y): # sépare l'ensemble de données entre celles d'apprentissages et de test
     np.random.seed(seed)
     n = len(X)
     nbr_aleatoires_test = np.random.choice(n, int(n*fraction_test), replace=False)
@@ -40,39 +40,33 @@ def decoupage_donnes(X, Y):
     Yapp = np.take(Y, nbr_app, 0)
     return Xapp, Yapp, Xtest, Ytest
 
-def kppv_distances(Xtest, Xapp): #ça tourne mais j'espère que c'est juste x)
+def kppv_distances(Xtest, Xapp): # Calcul des distances
     N = np.shape(Xapp)[0]
     M = np.shape(Xtest)[0]
     
-    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp)))
+    diag_xapp = np.diag(Xapp.dot(np.transpose(Xapp))) # permet d'avoir pour chaque ligne, la somme de ses éléments au carré
     diag_xapp = np.reshape(diag_xapp, (N,1))
-    mat_ligne_m = np.ones((1,M))
-    terme1_somme = diag_xapp.dot(mat_ligne_m)
+    mat_ligne_m = np.ones((1,M)) # on veut ces éléments pour toutes les colonnes
+    terme1_somme = diag_xapp.dot(mat_ligne_m) # premier terme de la somme
     
     diag_xtest = np.diag(Xtest.dot(np.transpose(Xtest)))
     diag_xtest = np.reshape(diag_xtest, (1,M))
     mat_colonne_n = np.ones((N,1))
-    terme2_somme = mat_colonne_n.dot(diag_xtest)
+    terme2_somme = mat_colonne_n.dot(diag_xtest) # deuxieme terme de la somme
     
-    terme3_somme = Xapp.dot(np.transpose(Xtest))
+    terme3_somme = Xapp.dot(np.transpose(Xtest)) # troisieme terme de la somme
     
     dist = terme1_somme + terme2_somme - 2*terme3_somme 
     return dist
-    
-def kppv_distances_bala(Xtest, Xapp):
-    a_2 = (Xtest**2).sum(axis=1)
-    a_2 = a_2.reshape((-1,1))
-    print(a_2)
-    b_2 = (Xapp**2).sum(axis=1)
-    b_2 = b_2.reshape((1,-1))
-    print(b_2)
-    dist = -2 * Xtest.dot(Xapp.T) + a_2 + b_2
-    print(Xtest.dot(Xapp.T))
-    return dist
 
-def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+def kppv_predict(dist, Yapp, K): 
+    """
+    Calcul des prédictions à partir de la matrice de distance
+    
+    Utilisation de np.argpartition(A,k) qui donne les indices pour que jusqu'à k, on ait les valeurs les  plus petites
+    """
     N,M = np.shape(dist)
-    #print(N,M)
+    #print(N,M) 
     sort_indices = np.argpartition(dist, K-1, axis = 0) #K-1 car on part de 0
     Yapp = np.reshape(Yapp, (N,1))
     Yapp_mat = Yapp.dot(np.ones((1,M))) # pour dupliquer Yapp dans toutes les colonnes
@@ -81,7 +75,7 @@ def kppv_predict(dist, Yapp, K): # utilisationde np.argpartition(A,k) qui donne 
     Ypred = stats.mode(Yapp_mat_sort_tronque)[0][0] #permet d'avoir l'element le plus présent
     return Ypred
 
-def evaluation_classifieur(Ytest, Ypred):
+def evaluation_classifieur(Ytest, Ypred): # permet de connaitre la précision du classifieur
     Ybool = (Ytest == Ypred)
     nbr_true = sum(Ybool)
     nbr_tot = len(Ybool)
@@ -89,10 +83,13 @@ def evaluation_classifieur(Ytest, Ypred):
 
 #%% Test
 
-K = 10
+K = 10 
 Kmax = 1000
 path = 'D:/julbr/Documents/ecole/ECL/3A\MOD 3.2 Deep Learning & IA/TD1/cifar-10-batches-py/data_batch_1'
 def fonction_test(K, path):
+    """
+    Pour tester les fonctions et voir la précision du modèle
+    """
     data_X, label_Y = lecture_cifar(path)
     Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
     #print(np.shape(Xapp))
@@ -104,6 +101,9 @@ def fonction_test(K, path):
 #%% Expérimentations
     
 def influence_K(Kmax, path):
+    """
+    Pour afficher l'influence du nombre de voisin sur la précision
+    """
     data_X, label_Y = lecture_cifar(path)
     Xapp, Yapp, Xtest, Ytest = decoupage_donnes(data_X, label_Y)
     dist = kppv_distances(Xtest, Xapp)
@@ -125,22 +125,23 @@ def influence_K(Kmax, path):
     plt.ylabel("Précision (%)")
     plt.show()
     
+    
 #print(fonction_test(K, path))
 #influence_K(Kmax, path)
 
-#%% Affichage
+#%% Affichage des images
     
 X, Y = lecture_cifar(path)
-test = X[0]
-X_r = test[:32*32].reshape((32, 32))
-X_g = test[32*32:2*32*32].reshape((32, 32))
-X_b = test[2*32*32:].reshape((32, 32))
-X_tot = np.array([X_r, X_g, X_b])
-X_tot = np.transpose(X_tot, [1,2,0])
+#test = X[0]
+#X_r = test[:32*32].reshape((32, 32))
+#X_g = test[32*32:2*32*32].reshape((32, 32))
+#X_b = test[2*32*32:].reshape((32, 32))
+#X_tot = np.array([X_r, X_g, X_b])
+#X_tot = np.transpose(X_tot, [1,2,0])
 #print(np.shape(X_tot))
 
-image = PIL.Image.fromarray(X_tot, "RGB")
-plt.imshow(image)
+#image = PIL.Image.fromarray(X_tot, "RGB")
+#plt.imshow(image)
 
 
 
@@ -151,6 +152,6 @@ plt.imshow(image)
 #    for k in range(5):
 #        i = np.random.choice(range(len(X)))
 #        axes1[j][k].set_axis_off()
-##        axes1[j][k].imshow(X[i:i+1][0])  
+#        axes1[j][k].imshow(X[i:i+1][0])  
 #        axes1[j][k].imshow(X[i])  
 
